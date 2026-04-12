@@ -58,7 +58,6 @@ const App = () => {
   const [isContactSupported, setIsContactSupported] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [scanError, setScanError] = useState('');
-  const [scanAutoTried, setScanAutoTried] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [packageQuery, setPackageQuery] = useState('');
   const packageDropdownRef = useRef(null);
@@ -440,34 +439,68 @@ const App = () => {
   const startCameraScan = async () => {
     setScanError('');
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setScanError('Perangkat tidak mendukung akses kamera. Gunakan input manual.');
-      return;
-    }
-
     if (!window.isSecureContext) {
       setScanError('Akses kamera butuh HTTPS. Buka dari domain HTTPS (mis. Vercel) atau localhost.');
       return;
     }
 
+    const hasModernCameraApi = !!navigator.mediaDevices?.getUserMedia;
+    const legacyGetUserMedia =
+      navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+    if (!hasModernCameraApi && !legacyGetUserMedia) {
+      setScanError('Browser/perangkat ini belum mendukung akses kamera. Coba buka di Chrome atau Safari terbaru.');
+      return;
+    }
+
+    const getCameraStream = async () => {
+      const constraintsList = [
+        { video: { facingMode: { exact: 'environment' } }, audio: false },
+        { video: { facingMode: { ideal: 'environment' } }, audio: false },
+        { video: true, audio: false }
+      ];
+
+      let lastError = null;
+      for (const constraints of constraintsList) {
+        try {
+          if (navigator.mediaDevices?.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            return stream;
+          }
+
+          const stream = await new Promise((resolve, reject) => {
+            legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+          });
+          return stream;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError || new Error('Camera not available');
+    };
+
     try {
       barcodeDetectorRef.current = 'BarcodeDetector' in window ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
+      const stream = await getCameraStream();
 
       cameraStreamRef.current = stream;
       if (scanVideoRef.current) {
+        scanVideoRef.current.setAttribute('playsinline', 'true');
+        scanVideoRef.current.setAttribute('webkit-playsinline', 'true');
         scanVideoRef.current.srcObject = stream;
-        await scanVideoRef.current.play();
+        await scanVideoRef.current.play().catch(() => {});
       }
 
       scanActiveRef.current = true;
       setScanning(true);
       scanFrameRef.current = requestAnimationFrame(scanFromCameraLoop);
     } catch (error) {
-      setScanError('Izin kamera ditolak atau kamera tidak tersedia.');
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+        setScanError('Izin kamera ditolak. Aktifkan permission kamera untuk browser ini.');
+      } else {
+        setScanError('Kamera tidak tersedia atau sedang dipakai aplikasi lain.');
+      }
       stopCameraScan();
     }
   };
@@ -476,16 +509,8 @@ const App = () => {
     if (activeTab !== 'scan') {
       stopCameraScan();
       setScanError('');
-      setScanAutoTried(false);
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'scan' && !scanResult && !scanAutoTried) {
-      setScanAutoTried(true);
-      startCameraScan();
-    }
-  }, [activeTab, scanResult, scanAutoTried]);
 
   useEffect(() => {
     return () => {
@@ -764,6 +789,11 @@ const App = () => {
                   <ScanLine className="w-4 h-4" />
                   {scanning ? 'Hentikan Kamera' : 'Scan Dari Kamera'}
                 </button>
+                {!scanning && !scanError && (
+                  <p className="text-center text-[10px] font-bold text-slate-400">
+                    Tap "Scan Dari Kamera" untuk mengaktifkan kamera.
+                  </p>
+                )}
                 {scanError && <p className="text-center text-[10px] font-bold text-rose-500">{scanError}</p>}
                 <input type="text" placeholder="Masukkan kode manual..." className="w-full glass border-white/80 py-5 px-8 rounded-[30px] text-center font-bold font-mono tracking-widest text-sm shadow-modern focus:ring-2 focus:ring-indigo-300 transition-all text-indigo-900 font-poppins" onKeyDown={(e) => e.key === 'Enter' && simulateScan(e.target.value)} />
               </div>
