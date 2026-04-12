@@ -1,0 +1,44 @@
+[
+  {
+    "customerName": "Stir",
+    "phone": "6282301769081",
+    "voucherType": "specific",
+    "package": "Newborn Signature",
+    "transportFee": 100000,
+    "discount": "10",
+    "validUntil": "2026-04-30",
+    "quantity": 1,
+    "id": "BK-NKOM5N",
+    "basePrice": 1500000,
+    "createdAt": "2026-04-12T07:39:25.075Z",
+    "status": "active"
+  },
+  {
+    "customerName": "Pelanggan Umum",
+    "phone": "",
+    "voucherType": "general",
+    "package": "Newborn Signature",
+    "transportFee": 0,
+    "discount": "10",
+    "validUntil": "2026-04-30",
+    "quantity": 2,
+    "id": "BK-E9GE37",
+    "basePrice": 0,
+    "createdAt": "2026-04-12T07:31:37.589Z",
+    "status": "active"
+  },
+  {
+    "customerName": "Pelanggan Umum",
+    "phone": "",
+    "voucherType": "general",
+    "package": "Newborn Signature",
+    "transportFee": 0,
+    "discount": "10",
+    "validUntil": "2026-04-30",
+    "quantity": 2,
+    "id": "BK-TTEQWY",
+    "basePrice": 0,
+    "createdAt": "2026-04-12T07:31:37.589Z",
+    "status": "active"
+  }
+]
