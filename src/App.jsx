@@ -771,14 +771,15 @@ const App = () => {
                 <div className="relative aspect-square w-full">
                   <div className="absolute inset-0 border-[14px] border-white/80 rounded-[64px] shadow-modern glass" />
                   <div className="absolute inset-[14px] bg-indigo-100/20 rounded-[50px] overflow-hidden flex items-center justify-center border border-white/50">
-                    {scanning ? (
-                      <>
-                        <video ref={scanVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                        <div className="w-[85%] h-0.5 bg-gradient-to-r from-transparent via-indigo-600 to-transparent absolute shadow-[0_0_20px_#4f46e5] animate-scan" />
-                      </>
-                    ) : (
-                      <QrCode className="w-24 h-24 text-indigo-300 opacity-50" />
-                    )}
+                    <video
+                      ref={scanVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover transition-opacity duration-300 ${scanning ? 'opacity-100' : 'opacity-0'}`}
+                    />
+                    {!scanning && <QrCode className="w-24 h-24 text-indigo-300 opacity-50 absolute" />}
+                    {scanning && <div className="w-[85%] h-0.5 bg-gradient-to-r from-transparent via-indigo-600 to-transparent absolute shadow-[0_0_20px_#4f46e5] animate-scan" />}
                   </div>
                 </div>
                 <button
