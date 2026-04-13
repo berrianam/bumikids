@@ -30,7 +30,7 @@ import jsQR from 'jsqr';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, initAnalytics } from './firebase';
 
-const GENERATE_QR_URL = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=";
+const GENERATE_QR_URL = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=30&data=";
 const VOUCHER_DOC_REF = doc(db, 'bumikids', 'vouchers');
 
 const PACKAGE_LIST = [
@@ -375,10 +375,31 @@ const App = () => {
     doc.setLineDashPattern([], 0);
   };
 
+  const normalizeVoucherCode = (value = '') => {
+    return value
+      .toUpperCase()
+      .replace(/[–—−]/g, '-')
+      .replace(/\s+/g, '')
+      .replace(/[^A-Z0-9-]/g, '');
+  };
+
+  const extractVoucherCode = (rawValue = '') => {
+    const upperRaw = rawValue.toUpperCase();
+    const patternMatch = upperRaw.match(/BK\s*-?\s*[A-Z0-9]{4,12}/);
+    if (!patternMatch) return normalizeVoucherCode(rawValue);
+
+    const compact = patternMatch[0].replace(/\s+/g, '');
+    if (compact.startsWith('BK-')) return normalizeVoucherCode(compact);
+
+    const suffix = compact.replace(/^BK-?/, '');
+    return normalizeVoucherCode(`BK-${suffix}`);
+  };
+
   const simulateScan = (code) => {
-    const found = vouchers.find(v => v.id === code.toUpperCase());
+    const scannedCode = extractVoucherCode(code);
+    const found = vouchers.find((v) => normalizeVoucherCode(v.id) === scannedCode);
     if (found) { setScanResult({ ...found, ...calculateFinalPrice(found.basePrice, found.transportFee, found.discount), status: 'valid' }); }
-    else { setScanResult({ id: code, status: 'invalid' }); }
+    else { setScanResult({ id: scannedCode || code, status: 'invalid' }); }
     setScanning(false);
   };
 
@@ -572,8 +593,8 @@ const App = () => {
               <h2 className="text-[16px] font-bold text-[#1E1B4B] font-poppins px-2">{v.customerName}</h2>
             </div>
             <div className="flex-grow flex flex-col items-center justify-center w-full py-2 min-h-0">
-              <div className="bg-white p-2 rounded-2xl border border-indigo-50 shadow-sm overflow-hidden mb-1">
-                <img src={`${GENERATE_QR_URL}${v.id}`} className="w-32 h-32 object-contain" alt="QR" crossOrigin="anonymous" />
+              <div className="bg-white p-3 rounded-2xl border border-indigo-100 shadow-sm mb-2">
+                <img src={`${GENERATE_QR_URL}${v.id}`} className="w-36 h-36 object-contain block" alt="QR" crossOrigin="anonymous" />
               </div>
               <p className="font-poppins font-bold tracking-[0.4em] text-indigo-900 text-[10px] uppercase mt-1">
                 {v.id.split('-')[0]} - {v.id.split('-')[1] || v.id}
