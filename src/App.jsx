@@ -403,25 +403,38 @@ const App = () => {
 
     try {
       let code = '';
+      const video = scanVideoRef.current;
 
-      if (barcodeDetectorRef.current) {
-        const barcodes = await barcodeDetectorRef.current.detect(scanVideoRef.current);
-        if (barcodes.length > 0) code = barcodes[0].rawValue?.trim() || '';
-      } else if (scanVideoRef.current.readyState >= 2) {
-        const video = scanVideoRef.current;
+      const decodeWithJsQR = () => {
+        if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return '';
+
         const canvas = scanCanvasRef.current || document.createElement('canvas');
         const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return '';
 
-        if (context && video.videoWidth > 0 && video.videoHeight > 0) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const maxWidth = 960;
+        const scale = Math.min(1, maxWidth / video.videoWidth);
+        const targetWidth = Math.max(1, Math.floor(video.videoWidth * scale));
+        const targetHeight = Math.max(1, Math.floor(video.videoHeight * scale));
 
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const qrResult = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
-          if (qrResult?.data) code = qrResult.data.trim();
-        }
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        context.drawImage(video, 0, 0, targetWidth, targetHeight);
+
+        const imageData = context.getImageData(0, 0, targetWidth, targetHeight);
+        const qrResult = jsQR(imageData.data, targetWidth, targetHeight, { inversionAttempts: 'attemptBoth' });
+
         scanCanvasRef.current = canvas;
+        return qrResult?.data?.trim() || '';
+      };
+
+      if (barcodeDetectorRef.current && video.readyState >= 2) {
+        const barcodes = await barcodeDetectorRef.current.detect(video);
+        if (barcodes.length > 0) code = barcodes[0].rawValue?.trim() || '';
+      }
+
+      if (!code) {
+        code = decodeWithJsQR();
       }
 
       if (code) {
